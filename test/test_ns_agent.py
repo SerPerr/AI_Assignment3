@@ -2,7 +2,7 @@
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
-from agents.MCTS import RandomAgent
+from agents.MCTS import RandomAgent, MCTSUCTAgent, InformedMCTSAgent
 
 import gymnasium as gym
 import ns_gym
@@ -15,7 +15,7 @@ from tqdm import tqdm
 if __name__ == '__main__':
     ###### Step 2: Create a standard gym environment ####
     domain = 'CartPole-v1'
-    domain = 'MountainCar-v0'
+    #domain = 'MountainCar-v0'
     env = gym.make(domain, render_mode = 'human')
     #############
     name, version = domain.split("-")
@@ -48,7 +48,8 @@ if __name__ == '__main__':
     truncated = False
     obs,info = ns_env.reset()
     planning_env = ns_env.get_planning_env()
-    agent = RandomAgent(planning_env)
+    #agent = MCTSUCTAgent(planning_env)
+
 
     timestep = 0
     for episodes in tqdm(range(10)):
