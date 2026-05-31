@@ -48,7 +48,7 @@ if __name__ == '__main__':
     truncated = False
     obs,info = ns_env.reset()
     planning_env = ns_env.get_planning_env()
-    #agent = MCTSUCTAgent(planning_env)
+    agent = MCTSUCTAgent(planning_env)
 
 
     timestep = 0

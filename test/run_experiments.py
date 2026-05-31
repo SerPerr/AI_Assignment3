@@ -13,7 +13,8 @@ import cfgs.cfg_dqn as cfg
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
-
+import warnings
+warnings.filterwarnings("ignore")  # ← πρόσθεσέ το στην αρχή του run_experiments.py
 
 # -------------------------------------------------------
 # Βοηθητικές συναρτήσεις
@@ -48,7 +49,7 @@ def load_mentor(domain, ns_env):
     model_path = str(base_dir / "agents" / "DDQN_models" / domain / model_file)
 
     params = dict(cfg.agent)
-    params['state_size'] = ns_env.observation_space.shape[0]  # ← διόρθωση
+    params['state_size'] = ns_env.unwrapped.observation_space.shape[0]  # ← unwrapped
     params['action_size'] = ns_env.action_space.n
     params['model_path'] = model_path
 
@@ -77,7 +78,8 @@ def run_episode(agent, ns_env):
 
 N_EPISODES   = 500
 N_RUNS       = 3
-NOISE_LEVELS = [0.0, 0.1, 0.3]
+#NOISE_LEVELS = [0.0, 0.1, 0.3]
+NOISE_LEVELS = [0.0, 0.1]  # μειωμένο για ταχύτητα
 NUM_SIMS     = 10   # μειωμένο για ταχύτητα
 
 domains = ["CartPole-v1", "MountainCar-v0"]
@@ -103,7 +105,8 @@ for domain in domains:
         print(f"  {label} | Run {run+1}/{N_RUNS}")
         ns_env = make_env(domain)
         run_rewards = []
-
+        
+        ns_env.reset()
         for ep in tqdm(range(N_EPISODES), desc=f"    Episodes"):
             planning_env = ns_env.get_planning_env()
             agent = MCTSUCTAgent(env=planning_env, num_simulations=NUM_SIMS)
@@ -122,7 +125,8 @@ for domain in domains:
             print(f"  {label} | Run {run+1}/{N_RUNS}")
             ns_env = make_env(domain)
             run_rewards = []
-
+            
+            ns_env.reset()  
             for ep in tqdm(range(N_EPISODES), desc=f"    Episodes"):
                 planning_env = ns_env.get_planning_env()
                 agent = InformedMCTSAgent(
