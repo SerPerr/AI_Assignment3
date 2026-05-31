@@ -29,8 +29,8 @@ def load_agent(path: str, agent_parameters: dict, env: gym.Env) -> DQNAgent:
 
 def main():
     
-    domain = 'CartPole-v1'
-    #domain = 'MountainCar-v0'
+    #domain = 'CartPole-v1'
+    domain = 'MountainCar-v0'
     env = gym.make(domain, render_mode = 'human')
     #############
     name, version = domain.split("-")
@@ -63,9 +63,9 @@ def main():
     planning_env = ns_env.get_planning_env()
     obs, info = env.reset()
     #agent = load_agent(f"agents/DDQN_models/{domain}/DDQN_episode_2833669.pth", cfg.agent, env)
-    #agent = load_agent(f"agents/DDQN_models/{domain}/DDQN_episode_2118775.pth", cfg.agent, env)
+    agent = load_agent(f"agents/DDQN_models/{domain}/DDQN_episode_2118775.pth", cfg.agent, env)
     #agent = load_agent(f"agents/DDQN_models/{domain}/DDQN_episode_8502425.pth", cfg.agent, env)
-    agent = load_agent(f"agents/DDQN_models/{domain}/DDQN_episode_13271959.pth", cfg.agent, env)
+    #agent = load_agent(f"agents/DDQN_models/{domain}/DDQN_episode_13271959.pth", cfg.agent, env)
     done = False
     truncated = False
     timestep = 0

@@ -14,8 +14,8 @@ from tqdm import tqdm
 
 if __name__ == '__main__':
     ###### Step 2: Create a standard gym environment ####
-    domain = 'CartPole-v1'
-    #domain = 'MountainCar-v0'
+    #domain = 'CartPole-v1'
+    domain = 'MountainCar-v0'
     env = gym.make(domain, render_mode = 'human')
     #############
     name, version = domain.split("-")

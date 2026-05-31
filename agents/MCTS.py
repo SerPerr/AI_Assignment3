@@ -52,10 +52,10 @@ class MCTSUCTAgent(base.Agent):
             total_reward = 0  # We will accumulate the reward obtained during the entire simulation
 
             # --- 1. SELECTION ---
-            while node.is_fully_expanded(num_actions) and len(node.children) > 0:  # While we can keep going down the tree
+            while node.is_fully_expanded(num_actions) and len(node.children) > 0:   # While we can keep going down the tree
                 action = self._select_uct_child(node)                               # Select the child with the highest UCT score
                 obs, reward, done, truncated, info = sim_env.step(action)           # Take the action in the simulated environment
-                total_reward += reward                                               # Accumulate the reward obtained during selection
+                total_reward += reward                                              # Accumulate the reward obtained during selection
                 node = node.children[action]                                        # Move down to the child node
                 if done or truncated:                                               # If we reach a terminal state during selection, we stop and will backpropagate the reward immediately
                     break

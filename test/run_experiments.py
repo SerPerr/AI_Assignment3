@@ -12,9 +12,14 @@ from agents.dqn import DQNAgent
 import cfgs.cfg_dqn as cfg
 import matplotlib.pyplot as plt
 import numpy as np
+import os
+
+import time
+from datetime import datetime
 from tqdm import tqdm
 import warnings
-warnings.filterwarnings("ignore")  # ← πρόσθεσέ το στην αρχή του run_experiments.py
+warnings.filterwarnings("ignore")
+
 
 # -------------------------------------------------------
 # Βοηθητικές συναρτήσεις
@@ -39,6 +44,7 @@ def make_env(domain):
 
 
 def load_mentor(domain, ns_env):
+    """Φορτώνει τον pretrained DQN mentor"""
     base_dir = Path(__file__).resolve().parents[1]
 
     if domain == "CartPole-v1":
@@ -49,7 +55,7 @@ def load_mentor(domain, ns_env):
     model_path = str(base_dir / "agents" / "DDQN_models" / domain / model_file)
 
     params = dict(cfg.agent)
-    params['state_size'] = ns_env.unwrapped.observation_space.shape[0]  # ← unwrapped
+    params['state_size'] = ns_env.unwrapped.observation_space.shape[0]
     params['action_size'] = ns_env.action_space.n
     params['model_path'] = model_path
 
@@ -73,100 +79,121 @@ def run_episode(agent, ns_env):
 
 
 # -------------------------------------------------------
+# Παράμετροι πειράματος
+# -------------------------------------------------------
+
+N_EPISODES   = 200
+N_RUNS       = 2
+NOISE_LEVELS = [0.0, 0.1, 0.3]
+NUM_SIMS     = 10
+
+DOMAINS = ["CartPole-v1", "MountainCar-v0"]
+
+
+# -------------------------------------------------------
 # Κύριο πείραμα
 # -------------------------------------------------------
 
-N_EPISODES   = 500
-N_RUNS       = 3
-#NOISE_LEVELS = [0.0, 0.1, 0.3]
-NOISE_LEVELS = [0.0, 0.1]  # μειωμένο για ταχύτητα
-NUM_SIMS     = 10   # μειωμένο για ταχύτητα
+def main():
+    results = {}
 
-domains = ["CartPole-v1", "MountainCar-v0"]
+    for domain in DOMAINS:
+        print(f"\n{'='*50}")
+        print(f"Domain: {domain}")
+        print(f"{'='*50}")
+        results[domain] = {}
 
-# Αποθηκεύουμε τα αποτελέσματα εδώ:
-# results[domain][label] = λίστα με N_RUNS λίστες, κάθε μία με N_EPISODES rewards
-results = {}
+        # Φορτώνουμε τον mentor μία φορά για το domain
+        tmp_env = make_env(domain)
+        mentor = load_mentor(domain, tmp_env)
+        tmp_env.close()
 
-for domain in domains:
-    print(f"\n=== Domain: {domain} ===")
-    results[domain] = {}
-
-    # Φορτώνουμε τον mentor μία φορά για το domain
-    tmp_env = make_env(domain)
-    mentor = load_mentor(domain, tmp_env)
-    tmp_env.close()
-
-    # ---- MCTS + UCT ----
-    label = "MCTS+UCT"
-    results[domain][label] = []
-
-    for run in range(N_RUNS):
-        print(f"  {label} | Run {run+1}/{N_RUNS}")
-        ns_env = make_env(domain)
-        run_rewards = []
-        
-        ns_env.reset()
-        for ep in tqdm(range(N_EPISODES), desc=f"    Episodes"):
-            planning_env = ns_env.get_planning_env()
-            agent = MCTSUCTAgent(env=planning_env, num_simulations=NUM_SIMS)
-            reward = run_episode(agent, ns_env)
-            run_rewards.append(reward)
-
-        ns_env.close()
-        results[domain][label].append(run_rewards)
-
-    # ---- MCTS + InformedUCT (για κάθε noise level) ----
-    for noise in NOISE_LEVELS:
-        label = f"InformedMCTS (noise={noise})"
+        # ---- MCTS + UCT ----
+        label = "MCTS+UCT"
         results[domain][label] = []
 
         for run in range(N_RUNS):
-            print(f"  {label} | Run {run+1}/{N_RUNS}")
+            start = time.time()
+            start_str = datetime.now().strftime("%H:%M:%S")
+            print(f"  {label} | Run {run+1}/{N_RUNS} | Start: {start_str}")
             ns_env = make_env(domain)
+            ns_env.reset()
             run_rewards = []
-            
-            ns_env.reset()  
-            for ep in tqdm(range(N_EPISODES), desc=f"    Episodes"):
+
+            for ep in tqdm(range(N_EPISODES), desc=f"    Episodes", leave=False):
                 planning_env = ns_env.get_planning_env()
-                agent = InformedMCTSAgent(
-                    env=planning_env,
-                    mentor_agent=mentor,
-                    noise_level=noise,
-                    num_simulations=NUM_SIMS
-                )
+                agent = MCTSUCTAgent(env=planning_env, num_simulations=NUM_SIMS)
                 reward = run_episode(agent, ns_env)
                 run_rewards.append(reward)
 
             ns_env.close()
             results[domain][label].append(run_rewards)
+            end_str = datetime.now().strftime("%H:%M:%S")
+            duration = time.time() - start
+            print(f"  {label} | Run {run+1}/{N_RUNS} | {start_str} → {end_str} | Duration: {duration:.1f}s")
 
+        for noise in NOISE_LEVELS:
+            label = f"InformedMCTS (noise={noise})"
+            results[domain][label] = []
 
-# -------------------------------------------------------
-# Γραφήματα - ένα ανά domain
-# -------------------------------------------------------
+            for run in range(N_RUNS):
+                start = time.time()
+                start_str = datetime.now().strftime("%H:%M:%S")
+                print(f"  {label} | Run {run+1}/{N_RUNS} | Start: {start_str}")
+                ns_env = make_env(domain)
+                ns_env.reset()
+                run_rewards = []
 
-for domain in domains:
-    plt.figure(figsize=(12, 6))
+                for ep in tqdm(range(N_EPISODES), desc=f"    Episodes", leave=False):
+                    planning_env = ns_env.get_planning_env()
+                    agent = InformedMCTSAgent(
+                        env=planning_env,
+                        mentor_agent=mentor,
+                        noise_level=noise,
+                        num_simulations=NUM_SIMS
+                    )
+                    reward = run_episode(agent, ns_env)
+                    run_rewards.append(reward)
+
+                ns_env.close()
+                results[domain][label].append(run_rewards)
+                end_str = datetime.now().strftime("%H:%M:%S")
+                duration = time.time() - start
+                print(f"  {label} | Run {run+1}/{N_RUNS} | {start_str} → {end_str} | Duration: {duration:.1f}s")
+
+    # -------------------------------------------------------
+    # Αποθήκευση γραφημάτων
+    # -------------------------------------------------------
+    os.makedirs("plots", exist_ok=True)
+    print("\n>>> Generating and saving graphs in /plots directory...")
 
     colors = ["blue", "orange", "green", "red"]
 
-    for idx, (label, runs) in enumerate(results[domain].items()):
-        runs_array = np.array(runs)          # shape: (N_RUNS, N_EPISODES)
-        mean = runs_array.mean(axis=0)       # μέσος όρος across runs
-        std  = runs_array.std(axis=0)        # τυπική απόκλιση across runs
-        episodes = np.arange(1, N_EPISODES + 1)
+    for domain in DOMAINS:
+        fig = plt.figure(figsize=(12, 6))
 
-        color = colors[idx % len(colors)]
-        plt.plot(episodes, mean, label=label, color=color)
-        plt.fill_between(episodes, mean - std, mean + std, alpha=0.2, color=color)
+        for idx, (label, runs) in enumerate(results[domain].items()):
+            runs_array = np.array(runs)          # shape: (N_RUNS, N_EPISODES)
+            mean = runs_array.mean(axis=0)
+            std  = runs_array.std(axis=0)
+            episodes = np.arange(1, N_EPISODES + 1)
 
-    plt.xlabel("Επεισόδιο")
-    plt.ylabel("Cumulative Reward")
-    plt.title(f"{domain} - Σύγκριση Αλγορίθμων")
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(f"{domain.replace('-', '_')}_results.png", dpi=150)
-    plt.show()
-    print(f"Γράφημα αποθηκεύτηκε: {domain.replace('-', '_')}_results.png")
+            color = colors[idx % len(colors)]
+            plt.plot(episodes, mean, label=label, color=color)
+            plt.fill_between(episodes, mean - std, mean + std, alpha=0.2, color=color)
+
+        plt.xlabel("Episode")
+        plt.ylabel("Cumulative Reward")
+        plt.title(f"{domain} - MCTS Agents Comparison (mean ± std, {N_RUNS} runs)")
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(f"plots/{domain.replace('-', '_')}_results.png", dpi=150)
+        plt.close(fig)
+        print(f"  Saved: plots/{domain.replace('-', '_')}_results.png")
+
+    print("\nExperiments complete! Graphs saved in /plots folder.")
+
+
+if __name__ == "__main__":
+    main()
